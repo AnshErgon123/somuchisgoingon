@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ERGON - CAN Monitor</title>
+    <script src="https://cdn.socket.io/4.3.2/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f1f4f9;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background-color: black;
+            color: white;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+        }
+        .container {
+            padding: 20px;
+        }
+        .status {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+        .status span {
+            font-weight: bold;
+        }
+        .status .connected {
+            color: green;
+        }
+        .status .disconnected {
+            color: red;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 10px;
+            text-align: center;
+        }
+        th {
+            background-color: #003366;
+            color: white;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+    </style>
+</head>
+<body>
+    <header>ERGON - CAN Monitor</header>
+    <div class="container">
+        <div class="status">Status: <span id="status" class="disconnected">Disconnected</span></div>
+        <div>Total Messages: <span id="message-count">0</span></div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>ID</th>
+                    <th>Data</th>
+                </tr>
+            </thead>
+            <tbody id="message-table">
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        const socket = io();
+
+        const statusSpan = document.getElementById('status');
+        const msgCount = document.getElementById('message-count');
+        const table = document.getElementById('message-table');
+
+        let lastMessageKey = '';
+
+        function updateStatus(isConnected) {
+            if (isConnected) {
+                statusSpan.textContent = 'Connected';
+                statusSpan.className = 'connected';
+            } else {
+                statusSpan.textContent = 'Disconnected';
+                statusSpan.className = 'disconnected';
+            }
+        }
+
+        socket.on('connection_status', (data) => {
+            updateStatus(data.status);
+            msgCount.textContent = data.message_count;
+        });
+
+        socket.on('can_message', (msg) => {
+            updateStatus(true); // Auto-update to connected when receiving message
+
+            msgCount.textContent = parseInt(msgCount.textContent) + 1;
+
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${msg.timestamp}</td>
+                <td>${msg.id}</td>
+                <td>${msg.data}</td>
+            `;
+            table.prepend(row);
+        });
+
+        socket.on('disconnect', () => {
+            updateStatus(false);
+        });
+    </script>
+</body>
+</html>
