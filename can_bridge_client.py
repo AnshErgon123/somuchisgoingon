@@ -1,10 +1,11 @@
-# can_bridge_client.py
-
-import can
 import socketio
+import can
 import time
 
-# Set up Socket.IO client
+# ✅ UPDATE with your actual deployed server URL
+SERVER_URL = "https://somuchisgoingon-4.onrender.com"  # e.g. "https://ergon-server.onrender.com"
+
+# Socket.IO client setup
 sio = socketio.Client()
 
 @sio.event
@@ -15,26 +16,44 @@ def connect():
 def disconnect():
     print("❌ Disconnected from ERGON server")
 
-# Replace with your deployed Render server URL
-sio.connect('https://your-ergon-app.onrender.com')
+@sio.event
+def connect_error(data):
+    print("❌ Connection failed:", data)
 
-# Setup CAN interface
-can_interface = 'pcan'
-can_channel = 'PCAN_USBBUS1'  # Adjust as per your hardware
-bus = can.interface.Bus(channel=can_channel, bustype=can_interface)
+# Try connecting to the server
+try:
+    sio.connect(SERVER_URL)
+except Exception as e:
+    print(f"❌ Connection error: {e}")
+    exit()
 
-print("🎯 Starting CAN bridge...")
+# Setup CAN interface — update channel if needed
+can_interface = "pcan"  # Use 'pcan' for Peak-CAN device
+can_channel = "PCAN_USBBUS1"
 
-while True:
-    try:
-        msg = bus.recv(timeout=1)
-        if msg:
-            hex_data = ' '.join(f'{byte:02X}' for byte in msg.data)
-            sio.emit('can_message', {
-                'timestamp': msg.timestamp,
-                'id': msg.arbitration_id,
-                'data': hex_data
-            })
-    except Exception as e:
-        print("⚠️ Error reading/sending CAN message:", e)
-        time.sleep(1)
+try:
+    bus = can.interface.Bus(channel=can_channel, interface=can_interface)
+except Exception as e:
+    print(f"❌ CAN interface error: {e}")
+    sio.disconnect()
+    exit()
+
+print("🎯 Listening for CAN messages...")
+
+try:
+    while True:
+        message = bus.recv(timeout=1)
+        if message:
+            data = {
+                "timestamp": time.time(),
+                "id": message.arbitration_id,
+                "data": list(message.data),
+                "dlc": message.dlc
+            }
+            sio.emit("can_data", data)
+            print("📤 Sent:", data)
+except KeyboardInterrupt:
+    print("🛑 Exiting...")
+finally:
+    bus.shutdown()
+    sio.disconnect()
