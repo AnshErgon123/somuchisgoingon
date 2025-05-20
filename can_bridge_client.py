@@ -3,7 +3,7 @@ import can
 import time
 
 # ✅ UPDATE with your actual deployed server URL
-SERVER_URL = "https://somuchisgoingon-4.onrender.com"  # e.g. "https://ergon-server.onrender.com"
+SERVER_URL = "https://somuchisgoingon-6.onrender.com"  # e.g. "https://ergon-server.onrender.com"
 
 # Socket.IO client setup
 sio = socketio.Client()
